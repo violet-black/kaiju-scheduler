@@ -5,7 +5,7 @@ import traceback
 from dataclasses import dataclass, field
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Awaitable, Callable, ClassVar, Dict, List, Mapping, Optional, TypedDict, final
+from typing import Any, Awaitable, Callable, ClassVar, Dict, List, Mapping, Optional, final
 from weakref import proxy
 
 from kaiju_scheduler.interfaces import Logger
@@ -15,18 +15,6 @@ __all__ = ["ExecPolicy", "ScheduledTask", "Scheduler"]
 
 _AsyncCallable = Callable[..., Awaitable[Any]]
 _Sentinel = ...
-
-
-class _TaskInfo(TypedDict):
-    name: str
-    enabled: bool
-    interval_s: float
-    policy: str
-    retries: int
-    retry_interval_s: float
-    max_timeout_s: float
-    started: bool
-    called_at: float
 
 
 @final
@@ -62,7 +50,7 @@ class ExecPolicy(Enum):
 class ScheduledTask:
     """Scheduled task."""
 
-    class _TaskDisableCtx:
+    class _TaskSuspendCtx:
         __slots__ = ("__weakref__", "_task")
 
         def __init__(self, task: "ScheduledTask", /):
@@ -138,28 +126,29 @@ class ScheduledTask:
         """
         self._enabled = False
 
-    def suspend(self) -> _TaskDisableCtx:
+    def suspend(self) -> _TaskSuspendCtx:
         """Temporarily suspend execution of a task within a context block."""
-        return self._TaskDisableCtx(self)
+        return self._TaskSuspendCtx(self)
 
     async def wait(self) -> None:
         """Wait until the current run has finished."""
         await self._idle.wait()
 
     def json_repr(self) -> Dict[str, Any]:
+        """Get JSON compatible object state info."""
         return {
             "cls": "Task",
-            "data": _TaskInfo(
-                name=self.name,
-                policy=self._policy.value,
-                enabled=self._enabled,
-                started=not self._idle.is_set(),
-                interval_s=self.interval_s,
-                max_timeout_s=self.max_timeout_s,
-                retries=self.retries,
-                retry_interval_s=self.retry_interval_s,
-                called_at=self._called_at,
-            ),
+            "data": {
+                "name": self.name,
+                "policy": self._policy.value,
+                "enabled": self._enabled,
+                "started": not self._idle.is_set(),
+                "interval_s": self.interval_s,
+                "max_timeout_s": self.max_timeout_s,
+                "retries": self.retries,
+                "retry_interval_s": self.retry_interval_s,
+                "called_at": self._called_at,
+            },
         }
 
     def run(self) -> None:
@@ -208,7 +197,6 @@ class Scheduler:
     """Schedule and execute local asynchronous functions periodically."""
 
     ExecPolicy: ClassVar = ExecPolicy
-    """Alias to scheduled task exec policy enum."""
 
     min_refresh_rate: ClassVar[float] = 0.1
     """Minimum allowed refresh rate between cycles in seconds, limits `refresh_rate` value."""
@@ -298,6 +286,7 @@ class Scheduler:
         await asyncio.wait(_tasks)
 
     def json_repr(self) -> Dict[str, Any]:
+        """Get JSON compatible object state info."""
         return {
             "cls": "Scheduler",
             "data": {
