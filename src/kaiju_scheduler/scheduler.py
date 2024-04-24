@@ -283,7 +283,8 @@ class Scheduler:
                     executed_task.cancel()
                 _tasks.append(executed_task)
 
-        await asyncio.wait(_tasks)
+        if _tasks:
+            await asyncio.wait(_tasks)
 
     def json_repr(self) -> Dict[str, Any]:
         """Get JSON compatible object state info."""
