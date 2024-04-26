@@ -204,9 +204,6 @@ class Scheduler:
     wait_task_timeout_safe_mod: ClassVar[float] = 4.0
     """Timeout modifier for WAIT tasks (to prevent them waiting forever)."""
 
-    refresh_rate: float = min_refresh_rate
-    """Refresh rate for the next cycle."""
-
     logger: Optional[Logger] = None
     """Optional logger instance."""
 
@@ -293,7 +290,6 @@ class Scheduler:
             "data": {
                 "started": self._started,
                 "time": self.loop.time(),
-                "refresh_rate": self.refresh_rate,
                 "tasks": [task.json_repr() for task in self.tasks],
             },
         }
