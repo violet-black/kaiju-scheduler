@@ -198,9 +198,6 @@ class Scheduler:
 
     ExecPolicy: ClassVar = ExecPolicy
 
-    min_refresh_rate: ClassVar[float] = 0.1
-    """Minimum allowed refresh rate between cycles in seconds, limits `refresh_rate` value."""
-
     wait_task_timeout_safe_mod: ClassVar[float] = 4.0
     """Timeout modifier for WAIT tasks (to prevent them waiting forever)."""
 
