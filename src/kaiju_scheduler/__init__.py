@@ -1,6 +1,7 @@
 """Asynchronous tasks scheduler and executor."""
 
 from kaiju_scheduler.scheduler import *
+from kaiju_scheduler.server import *
 from kaiju_scheduler.utils import *
 
 __python_version__ = "3.8"

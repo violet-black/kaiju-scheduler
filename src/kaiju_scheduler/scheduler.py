@@ -137,18 +137,15 @@ class ScheduledTask:
     def json_repr(self) -> Dict[str, Any]:
         """Get JSON compatible object state info."""
         return {
-            "cls": "Task",
-            "data": {
-                "name": self.name,
-                "policy": self._policy.value,
-                "enabled": self._enabled,
-                "started": not self._idle.is_set(),
-                "interval_s": self.interval_s,
-                "max_timeout_s": self.max_timeout_s,
-                "retries": self.retries,
-                "retry_interval_s": self.retry_interval_s,
-                "called_at": self._called_at,
-            },
+            "name": self.name,
+            "policy": self._policy.value,
+            "enabled": self._enabled,
+            "started": not self._idle.is_set(),
+            "interval_s": self.interval_s,
+            "max_timeout_s": self.max_timeout_s,
+            "retries": self.retries,
+            "retry_interval_s": self.retry_interval_s,
+            "called_at": self._called_at,
         }
 
     def run(self) -> None:
@@ -282,14 +279,7 @@ class Scheduler:
 
     def json_repr(self) -> Dict[str, Any]:
         """Get JSON compatible object state info."""
-        return {
-            "cls": "Scheduler",
-            "data": {
-                "started": self._started,
-                "time": self.loop.time(),
-                "tasks": [task.json_repr() for task in self.tasks],
-            },
-        }
+        return {"started": self._started, "time": self.loop.time(), "tasks": [task.json_repr() for task in self.tasks]}
 
     async def __aenter__(self) -> "Scheduler":
         await self.start()

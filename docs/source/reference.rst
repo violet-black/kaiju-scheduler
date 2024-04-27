@@ -21,4 +21,8 @@ Reference
    :members:
    :undoc-members:
 
+.. autoclass:: kaiju_scheduler.server.Server
+   :members:
+   :undoc-members:
+
 .. autofunction:: kaiju_scheduler.utils.timeout

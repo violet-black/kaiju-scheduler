@@ -1,9 +1,8 @@
 """Utility classes and functions."""
 
 import asyncio
-from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Any, Awaitable, Callable, Optional, Tuple, Type, TypeVar
+from typing import Any, Awaitable, Callable, Mapping, Optional, Tuple, Type, TypeVar
 
 from kaiju_scheduler.interfaces import Logger
 
@@ -50,7 +49,7 @@ class _Timeout:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if exc_type is asyncio.CancelledError:
-            raise asyncio.TimeoutError
+            raise asyncio.TimeoutError("Timeout")
         if self._handler:
             self._handler.cancel()
 
@@ -63,7 +62,7 @@ async def retry(
     func: Callable[..., Awaitable[Any]],
     retries: int,
     args: tuple = tuple(),
-    kws: Mapping = MappingProxyType({}),
+    kws: Mapping[str, Any] = MappingProxyType({}),
     *,
     interval_s: float = 1.0,
     timeout_s: float = 120.0,
