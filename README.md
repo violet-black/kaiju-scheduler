@@ -77,3 +77,29 @@ scheduler.schedule_task(call_async_procedure, interval_s=300, retries=3, retry_i
 
 There are various policies considering task execution.
 See the [reference](https://kaiju-scheduler.readthedocs.io/reference.html) for more info on that.
+
+# Server
+
+There's also a simple 'server' for handling asyncio tasks inside Python. It extends the standard loop functionality
+with retries, timeouts and impose some rate limit and prevent the loop from growing infinitely.
+
+The server returns an `asyncio.Task` object which can be awaited independently. The idea is that any error is not
+raised but instead returned inside of the result. This allows for more convenient handling of errors while using this
+in streams, queues and server applications.
+
+See the [reference](https://kaiju-scheduler.readthedocs.io/reference.html) for more info on server functions.
+
+```python
+from kaiju_scheduler import Server
+
+
+async def call_something(arg1: int, arg2: int):
+    return arg1 + arg2
+
+
+async def main():
+    async with Server() as server:
+        task = await server.call(call_something, [1, 2])
+        await task
+
+```

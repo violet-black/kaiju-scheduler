@@ -21,22 +21,22 @@ class TestServer:
         service = pytest.TestClass(0.001)
         params = {'value': True}
         async with Server() as server:
-            task = await server.call(service.run, params)
+            task = await server.call(service.run, kws=params)
             args, kws = await task
             assert kws == params
 
     async def test_retries(self):
         service = pytest.TestClass(0.001)
         async with Server() as server:
-            task = await server.call(service.retry, {'retries': 3}, retries=3, retry_interval_s=0)
+            task = await server.call(service.retry, kws={'retries': 3}, retries=3, retry_interval_s=0)
             result = await task
             assert result == 3
 
     async def test_retries_batch(self):
         service = pytest.TestClass(0.001)
         batch = [
-            (service.run, {'value': 0}),
-            (service.retry, {'retries': 3})
+            (service.run, [], {'value': 0}),
+            (service.retry, [], {'retries': 3})
         ]
         async with Server() as server:
             task = await server.call_many(batch, retries=3, retry_interval_s=0)
@@ -47,9 +47,9 @@ class TestServer:
         service = pytest.TestClass(0.001)
         async with Server() as server:
             task = await server.call_many([
-                (service.run, {'value': 0}),
-                (service.run, {'value': 1}),
-                (service.run, {'value': 2}),
+                (service.run, [], {'value': 0}),
+                (service.run, [], {'value': 1}),
+                (service.run, [], {'value': 2}),
             ])
             result = await task
             assert [r[1]['value'] for r in result] == [0, 1, 2]
@@ -57,7 +57,7 @@ class TestServer:
     async def test_timeout(self):
         service = pytest.TestClass(1)
         async with Server() as server:
-            task = await server.call(service.run, {}, request_timeout_s=0.01)
+            task = await server.call(service.run, kws={}, request_timeout_s=0.01)
             result = await task
             assert isinstance(result, asyncio.TimeoutError)
 
@@ -65,10 +65,10 @@ class TestServer:
         service = pytest.TestClass(0.006)
         async with Server() as server:
             task = await server.call_many([
-                (service.run, {'value': 0}),
-                (service.run, {'value': 1}),
-                (service.run, {'value': 2}),
-                (service.run, {'value': 3}),
+                (service.run, [], {'value': 0}),
+                (service.run, [], {'value': 1}),
+                (service.run, [], {'value': 2}),
+                (service.run, [], {'value': 3}),
             ], request_timeout_s=0.01)
             result = await task
             for _result in result[1:]:
@@ -77,13 +77,13 @@ class TestServer:
     async def test_callback(self):
         service = pytest.TestClass(0.001)
         async with Server() as server:
-            task = await server.call(service.run, {}, callback=service.run)
+            task = await server.call(service.run, kws={}, callback=service.run)
             await task
             assert service.counter == 2, 'callback must be called'
 
     async def test_batch_callback(self):
         service = pytest.TestClass(0.001)
-        batch = ((service.run, {}, ), (service.run, {}, ))
+        batch = ((service.run, [], {}), (service.run, [], {}))
         async with Server() as server:
             task = await server.call_many(batch, callback=service.run)
             await task
@@ -94,27 +94,27 @@ class TestServer:
         server.max_parallel_tasks = 1
         service = pytest.TestClass(0.001)
         async with server:
-            server.call_nowait(service.run, {})
+            server.call_nowait(service.run, kws={})
             with pytest.raises(asyncio.QueueFull):
-                server.call_nowait(service.run, {})
+                server.call_nowait(service.run, kws={})
 
     async def test_server_full_batch(self):
         server = Server()
         server.max_parallel_tasks = 1
         service = pytest.TestClass(0.001)
         async with server:
-            server.call_many_nowait((service.run, {}),)
+            server.call_many_nowait((service.run, [], {}),)
             with pytest.raises(asyncio.QueueFull):
-                server.call_many_nowait((service.run, {}),)
+                server.call_many_nowait((service.run, [], {}),)
 
     async def test_batch_abort(self):
         service = pytest.TestClass(0.006)
         async with Server() as server:
             task = await server.call_many([
-                (service.run, {'value': 0}),
-                (service.fail, {'value': 1}),
-                (service.run, {'value': 2}),
-                (service.run, {'value': 3}),
+                (service.run, [], {'value': 0}),
+                (service.fail, [], {'value': 1}),
+                (service.run, [], {'value': 2}),
+                (service.run, [], {'value': 3}),
             ], abort_batch_on_error=True)
             result = await task
             assert not isinstance(result[0], Exception)
@@ -129,22 +129,22 @@ class TestServer:
         server = Server()
         service = pytest.TestClass(0.001)
         with pytest.raises(ServerClosed):
-            server.call_nowait(service.run, {})
+            server.call_nowait(service.run, kws={})
 
     async def test_server_closed_batch(self):
         server = Server()
         service = pytest.TestClass(0.001)
         with pytest.raises(ServerClosed):
-            server.call_many_nowait(((service.run, {}),))
+            server.call_many_nowait(((service.run, [], {}),))
 
     async def test_server_closed_async(self):
         server = Server()
         service = pytest.TestClass(0.001)
         with pytest.raises(ServerClosed):
-            await server.call(service.run, {})
+            await server.call(service.run, kws={})
 
     async def test_server_closed_batch_async(self):
         server = Server()
         service = pytest.TestClass(0.001)
         with pytest.raises(ServerClosed):
-            await server.call_many(((service.run, {}),))
+            await server.call_many(((service.run, [], {}),))

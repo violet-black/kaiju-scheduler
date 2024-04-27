@@ -2,14 +2,15 @@
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Collection, Final, List, Mapping, Optional, Tuple
+from types import MappingProxyType
+from typing import Any, Awaitable, Callable, Collection, Iterable, Final, List, Mapping, Optional, Tuple
 
 from kaiju_scheduler.interfaces import Logger
 from kaiju_scheduler.utils import retry, timeout
 
 __all__ = ["Server", "Aborted", "ServerClosed"]
 
-_RequestBatch = Collection[Tuple[Callable[..., Awaitable], Mapping[str, Any]]]
+_RequestBatch = Collection[Tuple[Callable[..., Awaitable], Iterable[Any], Mapping[str, Any]]]
 _Callback = Optional[Callable[..., Awaitable]]
 
 
@@ -52,7 +53,8 @@ class Server:
     def call_nowait(
         self,
         func: Callable[..., Awaitable],
-        params: Mapping[str, Any],
+        args: Iterable[Any] = tuple(),
+        kws: Mapping[str, Any] = MappingProxyType({}),
         *,
         request_timeout_s: float = 300,
         callback: _Callback = None,
@@ -68,7 +70,8 @@ class Server:
             passes them to the callback function if it was provided.
 
         :param func: The function to call
-        :param params: The parameters to pass to the function
+        :param args: Positional arguments
+        :param kws: Keyword arguments
         :param request_timeout_s: total max request time, the request will return `asyncio.TimeoutError`
             once the timeout is reached
         :param callback: The callback function which will be called with the result
@@ -87,7 +90,7 @@ class Server:
             raise asyncio.QueueFull("Server is full")
         self._increment_counter()
         return asyncio.create_task(
-            self._call(func, params, request_timeout_s, callback, retries, retry_interval_s), name=task_name
+            self._call(func, args, kws, request_timeout_s, callback, retries, retry_interval_s), name=task_name
         )
 
     def call_many_nowait(
@@ -110,7 +113,7 @@ class Server:
             The method is designed so the task doesn't raise errors. It returns them instead in its result and
             passes them to the callback function if it was provided.
 
-        :param batch: batch of request data, i.e. list of (func, params) tuples
+        :param batch: batch of requests i.e. a collection of (func, args, kws) tuples
         :param request_timeout_s: total max request time for the whole batch, each request in a batch after the timeout
             will return `asyncio.TimeoutError`
         :param abort_batch_on_error: abort the whole batch on a first exception, all subsequent requests in the batch
@@ -138,7 +141,8 @@ class Server:
     async def call(
         self,
         func: Callable[..., Awaitable],
-        params: Mapping[str, Any],
+        args: Iterable[Any] = tuple(),
+        kws: Mapping[str, Any] = MappingProxyType({}),
         *,
         request_timeout_s: float = 300,
         callback: _Callback = None,
@@ -154,7 +158,7 @@ class Server:
             await self.server_not_full.wait()
         self._increment_counter()
         return asyncio.create_task(
-            self._call(func, params, request_timeout_s, callback, retries, retry_interval_s), name=task_name
+            self._call(func, args, kws, request_timeout_s, callback, retries, retry_interval_s), name=task_name
         )
 
     async def call_many(
@@ -183,11 +187,12 @@ class Server:
     async def _call(
         self,
         func: Callable[..., Awaitable],
-        params: Mapping[str, Any],
-        request_timeout_s: float = 300,
-        callback: _Callback = None,
-        retries: int = 0,
-        retry_interval_s: float = 0,
+        args: Iterable[Any],
+        kws: Mapping[str, Any],
+        request_timeout_s: float,
+        callback: _Callback,
+        retries: int,
+        retry_interval_s: float,
     ) -> Any:
         result = None
         try:
@@ -195,14 +200,15 @@ class Server:
                 if retries:
                     result = await retry(
                         func,
-                        kws=params,
+                        args=args,
+                        kws=kws,
                         retries=retries,
                         interval_s=retry_interval_s,
                         timeout_s=request_timeout_s,
                         logger=self.logger,
                     )
                 else:
-                    result = await func(**params)
+                    result = await func(*args, **kws)
         except Exception as exc:
             result = exc
         finally:
@@ -223,19 +229,20 @@ class Server:
         n, results = 0, []
         try:
             async with timeout(request_timeout_s):
-                for n, (func, params) in enumerate(batch):
+                for n, (func, args, kws) in enumerate(batch):
                     try:
                         if retries:
                             result = await retry(
                                 func,
-                                kws=params,
+                                args=args,
+                                kws=kws,
                                 retries=retries,
                                 interval_s=retry_interval_s,
                                 timeout_s=request_timeout_s,
                                 logger=self.logger,
                             )
                         else:
-                            result = await func(**params)
+                            result = await func(*args, **kws)
                         results.append(result)
                     except Exception as exc:
                         results.append(exc)

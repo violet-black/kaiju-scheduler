@@ -2,7 +2,7 @@
 
 import asyncio
 from types import MappingProxyType
-from typing import Any, Awaitable, Callable, Mapping, Optional, Tuple, Type, TypeVar
+from typing import Any, Awaitable, Callable, Iterable, Mapping, Optional, Tuple, Type, TypeVar
 
 from kaiju_scheduler.interfaces import Logger
 
@@ -61,7 +61,7 @@ class _Timeout:
 async def retry(
     func: Callable[..., Awaitable[Any]],
     retries: int,
-    args: tuple = tuple(),
+    args: Iterable[Any] = tuple(),
     kws: Mapping[str, Any] = MappingProxyType({}),
     *,
     interval_s: float = 1.0,
