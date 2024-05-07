@@ -22,6 +22,10 @@ class TestClass:
         self.counter += 1
         return args, kws
 
+    async def sum(self, a, b):
+        await asyncio.sleep(self.interval)
+        return a + b
+
     async def fail(self):
         raise ValueError('Failed!')
 
